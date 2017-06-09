@@ -1,0 +1,75 @@
+apply plugin: 'com.android.library'
+apply plugin: 'com.jfrog.bintray'
+apply plugin: 'com.github.dcendents.android-maven'
+
+android {
+    compileSdkVersion 25
+    buildToolsVersion "25.0.2"
+
+    defaultConfig {
+        minSdkVersion 9
+        targetSdkVersion 25
+        versionCode 1
+        versionName "$version"
+    }
+}
+
+def repoDesc = 'NestedScrolling and CoordinatorLayout support for Google Maps Fragments'
+def repoName = 'android-nestedscroll-maps'
+def repoUrl = "https://github.com/gmazzo/$repoName"
+def repoTags = ['aar', 'android', 'nested-scroll', 'scroll', 'design', 'appcompat', 'maps', 'google' ]
+
+bintray {
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+
+    configurations = ['archives']
+    pkg {
+        repo = 'maven'
+        name = repoName
+        desc = repoDesc
+        vcsUrl = "${repoUrl}.git"
+        githubRepo = repoUrl.replaceFirst('\\Qhttps://github.com/\\E', '');
+        githubReleaseNotesFile = 'README.md'
+        licenses = ['Public Domain']
+        labels = repoTags
+        publicDownloadNumbers = true
+    }
+}
+
+dependencies {
+    compile 'com.google.android.gms:play-services-maps:9.0.0'
+}
+
+install {
+    repositories.mavenInstaller {
+        pom {
+            project {
+                packaging 'aar'
+                name repoDesc
+                url repoUrl
+            }
+        }
+    }
+}
+
+task sourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+
+task javadoc(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+    classpath += configurations.compile
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives javadocJar
+    archives sourcesJar
+}
