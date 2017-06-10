@@ -1,0 +1,24 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 25
+    buildToolsVersion "25.0.2"
+
+    defaultConfig {
+        applicationId 'gs.utils.maps.nestedscroll.demo'
+        minSdkVersion 14
+        targetSdkVersion 25
+        versionCode 1
+        versionName "1.0"
+    }
+}
+
+def appCompatVersion = '25.3.1'
+
+dependencies {
+    compile project(':nestedscroll-maps')
+
+    compile "com.android.support:design:$appCompatVersion"
+    compile "com.android.support:cardview-v7:$appCompatVersion"
+    compile 'com.google.android.gms:play-services-maps:11.0.0'
+}
