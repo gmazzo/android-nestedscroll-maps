@@ -5,9 +5,10 @@ A `NestedScrollingChild` aware straight forward replacement for Google's `MapFra
 On your `build.gradle` add:
 ```
     dependencies {
-        compile 'com.github.gmazzo.android.nestedscroll-maps:0.1'
+        compile 'com.github.gmazzo:nestedscroll-maps:0.1'
     }
 ```
+[ ![Download](https://api.bintray.com/packages/gmazzo/maven/android-nestedscroll-maps/images/download.svg) ](https://bintray.com/gmazzo/maven/android-nestedscroll-maps/_latestVersion)
 
 ## Usage
 Just replace `MapFragment` and `SupportMapFragment` with `NestedScrollMapFragment` and `SupportNestedScrollMapFragment` respectively
