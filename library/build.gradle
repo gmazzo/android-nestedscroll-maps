@@ -14,7 +14,7 @@ android {
     }
 }
 
-def repoDesc = 'NestedScrolling and CoordinatorLayout support for Google Maps Fragments'
+def repoDesc = 'Nested scroll (CoordinatorLayout, AppBarLayout and CollapsingToolbarLayout) support for Google Maps fragments'
 def repoName = 'android-nestedscroll-maps'
 def repoUrl = "https://github.com/gmazzo/$repoName"
 def repoTags = ['aar', 'android', 'nested-scroll', 'scroll', 'design', 'appcompat', 'maps', 'google' ]

@@ -11,3 +11,8 @@ On your `build.gradle` add:
 
 ## Usage
 Just replace `MapFragment` and `SupportMapFragment` with `NestedScrollMapFragment` and `SupportNestedScrollMapFragment` respectively
+
+## Demo
+NestedScrollMapFragment|MapFragment
+---|---
+![Nested Demo](screenshots/demoNested.gif)|![Regular Demo](screenshots/demoRegular.gif)
