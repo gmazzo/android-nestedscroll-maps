@@ -8,6 +8,8 @@ import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.VelocityTracker;
+import android.view.ViewConfiguration;
 import android.view.ViewParent;
 import android.widget.FrameLayout;
 
@@ -20,6 +22,7 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
     private final NestedScrollingChildHelper helper = new NestedScrollingChildHelper(this);
     private final int scrollOffset[] = {0, 0};
     private GoogleMap googleMap;
+    private VelocityTracker velocityTracker;
     private float lastX, lastY;
 
     public NestedScrollMapView(Context context) {
@@ -44,11 +47,26 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
     public boolean onInterceptTouchEvent(MotionEvent ev) {
         Log.d("AAA", "onInterceptTouchEvent: ev=" + ev);
 
-        if (MotionEventCompat.getActionMasked(ev) == MotionEvent.ACTION_DOWN) {
-            ViewParent parent = getParent();
-            if (parent != null) {
-                parent.requestDisallowInterceptTouchEvent(true);
-            }
+        switch (MotionEventCompat.getActionMasked(ev)) {
+            case MotionEvent.ACTION_DOWN:
+                ViewParent parent = getParent();
+                if (parent != null) {
+                    parent.requestDisallowInterceptTouchEvent(true);
+                }
+
+                initOrResetVelocityTracker();
+                velocityTracker.addMovement(ev);
+                break;
+
+            case MotionEvent.ACTION_MOVE:
+                initVelocityTrackerIfNotExists();
+                velocityTracker.addMovement(ev);
+                break;
+
+            case MotionEvent.ACTION_CANCEL:
+            case MotionEvent.ACTION_UP:
+                stopNestedScroll();
+                break;
         }
         return super.onInterceptTouchEvent(ev);
     }
@@ -76,6 +94,22 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
                         dispatchNestedScroll(deltaX, deltaY, 0, 0, null);
                     }
                     break;
+
+                case MotionEvent.ACTION_UP:
+                    ViewConfiguration configuration = ViewConfiguration.get(getContext());
+                    velocityTracker.computeCurrentVelocity(1000, configuration.getScaledMaximumFlingVelocity());
+                    float velocityX = -velocityTracker.getXVelocity();
+                    float velocityY = -velocityTracker.getYVelocity();
+                    recycleVelocityTracker();
+
+                    if (!dispatchNestedPreFling(velocityX, velocityY)) {
+                        dispatchNestedFling(velocityX, velocityY, false);
+                    }
+                    break;
+            }
+
+            if (velocityTracker != null) {
+                velocityTracker.addMovement(ev);
             }
         }
         return super.dispatchTouchEvent(ev);
@@ -119,7 +153,7 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
     @Override
     public void stopNestedScroll() {
         helper.stopNestedScroll();
-
+        recycleVelocityTracker();
         lastX = lastY = Float.NaN;
     }
 
@@ -157,6 +191,27 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
     @Override
     public void onCameraIdle() {
         stopNestedScroll();
+    }
+
+    private void initOrResetVelocityTracker() {
+        if (velocityTracker == null) {
+            velocityTracker = VelocityTracker.obtain();
+        } else {
+            velocityTracker.clear();
+        }
+    }
+
+    private void initVelocityTrackerIfNotExists() {
+        if (velocityTracker == null) {
+            velocityTracker = VelocityTracker.obtain();
+        }
+    }
+
+    private void recycleVelocityTracker() {
+        if (velocityTracker != null) {
+            velocityTracker.recycle();
+            velocityTracker = null;
+        }
     }
 
 }
