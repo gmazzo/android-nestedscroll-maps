@@ -14,6 +14,6 @@ allprojects {
         jcenter()
     }
 
-    group = 'com.github.gmazzo.android'
-    version = '0.1'
+    group = 'com.github.gmazzo'
+    version = '0.2'
 }

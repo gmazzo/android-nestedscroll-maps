@@ -6,7 +6,6 @@ import android.support.v4.view.NestedScrollingChild;
 import android.support.v4.view.NestedScrollingChildHelper;
 import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.ViewConfiguration;
@@ -15,8 +14,6 @@ import android.widget.FrameLayout;
 
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
-
-import java.util.Arrays;
 
 public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallback, NestedScrollingChild, GoogleMap.OnCameraMoveStartedListener, GoogleMap.OnCameraIdleListener {
     private final NestedScrollingChildHelper helper = new NestedScrollingChildHelper(this);
@@ -45,8 +42,6 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        Log.d("AAA", "onInterceptTouchEvent: ev=" + ev);
-
         switch (MotionEventCompat.getActionMasked(ev)) {
             case MotionEvent.ACTION_DOWN:
                 ViewParent parent = getParent();
@@ -73,8 +68,6 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        Log.d("AAA", "dispatchTouchEvent: ev=" + ev);
-
         if (hasNestedScrollingParent()) {
             switch (MotionEventCompat.getActionMasked(ev)) {
                 case MotionEvent.ACTION_MOVE:
@@ -89,7 +82,6 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
                         if (dispatchNestedPreScroll(deltaX, deltaY, null, scrollOffset)) {
                             ev.offsetLocation(-scrollOffset[0], -scrollOffset[1]);
                         }
-                        Log.i("AAA", "deltaX=" + deltaX + ", deltaY=" + deltaY + ", scrollOffset=" + Arrays.toString(scrollOffset));
 
                         dispatchNestedScroll(deltaX, deltaY, 0, 0, null);
                     }
