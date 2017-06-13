@@ -16,11 +16,13 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 
 public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallback, NestedScrollingChild, GoogleMap.OnCameraMoveStartedListener, GoogleMap.OnCameraIdleListener {
+    private static final int INVALID_POINTER = -1;
     private final NestedScrollingChildHelper helper = new NestedScrollingChildHelper(this);
     private final int scrollOffset[] = {0, 0};
     private GoogleMap googleMap;
     private VelocityTracker velocityTracker;
-    private float lastX, lastY;
+    private int activePointerId = INVALID_POINTER;
+    private int lastMotionX, lastMotionY;
 
     public NestedScrollMapView(Context context) {
         super(context);
@@ -40,54 +42,98 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
         helper.setNestedScrollingEnabled(true);
     }
 
+    private void requestParentDisallowInterceptTouchEvent() {
+        ViewParent parent = getParent();
+        if (parent != null) {
+            parent.requestDisallowInterceptTouchEvent(true);
+        }
+    }
+
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
         switch (MotionEventCompat.getActionMasked(ev)) {
-            case MotionEvent.ACTION_DOWN:
-                ViewParent parent = getParent();
-                if (parent != null) {
-                    parent.requestDisallowInterceptTouchEvent(true);
+            case MotionEvent.ACTION_MOVE: {
+                if (hasNestedScrollingParent()) {
+                    return true;
                 }
+                if (activePointerId == INVALID_POINTER || ev.findPointerIndex(activePointerId) == INVALID_POINTER) {
+                    break;
+                }
+                int pointerIndex = ev.findPointerIndex(activePointerId);
+                if (pointerIndex == -1) {
+                    break;
+                }
+
+                lastMotionX = (int) ev.getX(pointerIndex);
+                lastMotionY = (int) ev.getY(pointerIndex);
+
+                initVelocityTrackerIfNotExists();
+                velocityTracker.addMovement(ev);
+
+                requestParentDisallowInterceptTouchEvent();
+                break;
+            }
+
+            case MotionEvent.ACTION_DOWN: {
+                activePointerId = ev.getPointerId(0);
+                lastMotionX = (int) ev.getX();
+                lastMotionY = (int) ev.getY();
 
                 initOrResetVelocityTracker();
                 velocityTracker.addMovement(ev);
-                break;
 
-            case MotionEvent.ACTION_MOVE:
-                initVelocityTrackerIfNotExists();
-                velocityTracker.addMovement(ev);
+                requestParentDisallowInterceptTouchEvent();
                 break;
+            }
 
             case MotionEvent.ACTION_CANCEL:
             case MotionEvent.ACTION_UP:
                 stopNestedScroll();
                 break;
+
+            case MotionEventCompat.ACTION_POINTER_UP:
+                onSecondaryPointerUp(ev);
+                break;
         }
-        return super.onInterceptTouchEvent(ev);
+        return true;
     }
 
     @Override
-    public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (hasNestedScrollingParent()) {
-            switch (MotionEventCompat.getActionMasked(ev)) {
-                case MotionEvent.ACTION_MOVE:
-                    if (Float.isNaN(lastX) && ev.getHistorySize() > 1) {
-                        lastX = ev.getHistoricalX(0);
-                        lastY = ev.getHistoricalY(0);
-                    }
-                    if (!Float.isNaN(lastX)) {
-                        int deltaX = (int) (lastX - ev.getX());
-                        int deltaY = (int) (lastY - ev.getY());
+    public boolean onTouchEvent(MotionEvent ev) {
+        initVelocityTrackerIfNotExists();
 
-                        if (dispatchNestedPreScroll(deltaX, deltaY, null, scrollOffset)) {
-                            ev.offsetLocation(-scrollOffset[0], -scrollOffset[1]);
-                        }
+        switch (MotionEventCompat.getActionMasked(ev)) {
+            case MotionEvent.ACTION_DOWN: {
+                requestParentDisallowInterceptTouchEvent();
 
-                        dispatchNestedScroll(deltaX, deltaY, 0, 0, null);
-                    }
+                activePointerId = ev.getPointerId(0);
+                lastMotionX = (int) ev.getX();
+                lastMotionY = (int) ev.getY();
+                break;
+            }
+            case MotionEvent.ACTION_MOVE:
+                int activePointerIndex = ev.findPointerIndex(activePointerId);
+                if (activePointerIndex == -1) {
                     break;
+                }
 
-                case MotionEvent.ACTION_UP:
+                int x = (int) ev.getX(activePointerIndex);
+                int y = (int) ev.getY(activePointerIndex);
+                if (hasNestedScrollingParent()) {
+                    int deltaX = lastMotionX - y;
+                    int deltaY = lastMotionY - y;
+                    dispatchNestedPreScroll(deltaX, deltaY, null, scrollOffset);
+
+                    // Google Maps infite scroll consumes any unconsumed offset
+                    dispatchNestedScroll(deltaX, deltaY, 0, 0, null);
+                }
+
+                lastMotionX = x - scrollOffset[0];
+                lastMotionY = y - scrollOffset[1];
+                break;
+
+            case MotionEvent.ACTION_UP:
+                if (hasNestedScrollingParent()) {
                     ViewConfiguration configuration = ViewConfiguration.get(getContext());
                     velocityTracker.computeCurrentVelocity(1000, configuration.getScaledMaximumFlingVelocity());
                     float velocityX = -velocityTracker.getXVelocity();
@@ -97,14 +143,51 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
                     if (!dispatchNestedPreFling(velocityX, velocityY)) {
                         dispatchNestedFling(velocityX, velocityY, false);
                     }
-                    break;
+                }
+
+                stopNestedScroll();
+                break;
+
+            case MotionEvent.ACTION_CANCEL:
+                stopNestedScroll();
+                break;
+
+            case MotionEventCompat.ACTION_POINTER_DOWN: {
+                int index = MotionEventCompat.getActionIndex(ev);
+                activePointerId = ev.getPointerId(index);
+                lastMotionX = (int) ev.getX(index);
+                lastMotionY = (int) ev.getY(index);
+                break;
             }
 
+            case MotionEventCompat.ACTION_POINTER_UP:
+                onSecondaryPointerUp(ev);
+                int index = ev.findPointerIndex(activePointerId);
+                lastMotionX = (int) ev.getX(index);
+                lastMotionY = (int) ev.getY(index);
+                break;
+        }
+
+        if (velocityTracker != null) {
+            velocityTracker.addMovement(ev);
+        }
+        return getChildAt(0).dispatchTouchEvent(ev);
+    }
+
+    private void onSecondaryPointerUp(MotionEvent ev) {
+        int index = (ev.getAction() & MotionEventCompat.ACTION_POINTER_INDEX_MASK)
+                >> MotionEventCompat.ACTION_POINTER_INDEX_SHIFT;
+
+        if (ev.getPointerId(index) == activePointerId) {
+            int newIndex = index == 0 ? 1 : 0;
+            activePointerId = ev.getPointerId(newIndex);
+            lastMotionX = (int) ev.getX(newIndex);
+            lastMotionY = (int) ev.getY(newIndex);
+
             if (velocityTracker != null) {
-                velocityTracker.addMovement(ev);
+                velocityTracker.clear();
             }
         }
-        return super.dispatchTouchEvent(ev);
     }
 
     @Override
@@ -145,8 +228,8 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
     @Override
     public void stopNestedScroll() {
         helper.stopNestedScroll();
+        activePointerId = INVALID_POINTER;
         recycleVelocityTracker();
-        lastX = lastY = Float.NaN;
     }
 
     @Override
