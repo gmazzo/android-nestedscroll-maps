@@ -1,4 +1,4 @@
-package gs.utils.maps.nestedscroll.demo;
+package gs.maps.nestedscroll.demo;
 
 import android.os.Bundle;
 import android.support.annotation.IdRes;
@@ -16,7 +16,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 
-import gs.utils.maps.nestedscroll.SupportNestedScrollMapFragment;
+import gs.maps.nestedscroll.SupportNestedScrollMapFragment;
 
 public class DemoActivity extends AppCompatActivity implements RadioGroup.OnCheckedChangeListener {
     private final GoogleMapOptions mapOptions = new GoogleMapOptions()

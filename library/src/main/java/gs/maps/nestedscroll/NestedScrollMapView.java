@@ -1,4 +1,4 @@
-package gs.utils.maps.nestedscroll;
+package gs.maps.nestedscroll;
 
 import android.content.Context;
 import android.support.v4.view.MotionEventCompat;

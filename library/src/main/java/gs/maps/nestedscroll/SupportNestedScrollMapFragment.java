@@ -1,4 +1,4 @@
-package gs.utils.maps.nestedscroll;
+package gs.maps.nestedscroll;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -6,16 +6,16 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.google.android.gms.maps.GoogleMapOptions;
-import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.SupportMapFragment;
 
-public class NestedScrollMapFragment extends MapFragment {
+public class SupportNestedScrollMapFragment extends SupportMapFragment {
 
-    public static NestedScrollMapFragment newInstance() {
-        return new NestedScrollMapFragment();
+    public static SupportNestedScrollMapFragment newInstance() {
+        return new SupportNestedScrollMapFragment();
     }
 
-    public static NestedScrollMapFragment newInstance(GoogleMapOptions options) {
-        NestedScrollMapFragment fragment = new NestedScrollMapFragment();
+    public static SupportNestedScrollMapFragment newInstance(GoogleMapOptions options) {
+        SupportNestedScrollMapFragment fragment = new SupportNestedScrollMapFragment();
 
         Bundle args = new Bundle();
         args.putParcelable("MapOptions", options);
