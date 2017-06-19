@@ -8,7 +8,9 @@ import android.support.v4.view.ViewCompat;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
+import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.widget.FrameLayout;
 
@@ -18,11 +20,12 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallback, NestedScrollingChild, GoogleMap.OnCameraMoveStartedListener, GoogleMap.OnCameraIdleListener {
     private static final int INVALID_POINTER = -1;
     private final NestedScrollingChildHelper helper = new NestedScrollingChildHelper(this);
-    private final int scrollOffset[] = {0, 0};
+    private final int scrollOffset[] = {0, 0}, touchSlop, minimumVelocity, maximumVelocity;
     private GoogleMap googleMap;
     private VelocityTracker velocityTracker;
     private int activePointerId = INVALID_POINTER;
     private int lastMotionX, lastMotionY;
+    private boolean originatedHere;
 
     public NestedScrollMapView(Context context) {
         super(context);
@@ -40,6 +43,11 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
         setWillNotDraw(true);
 
         helper.setNestedScrollingEnabled(true);
+
+        ViewConfiguration configuration = ViewConfiguration.get(getContext());
+        touchSlop = configuration.getScaledTouchSlop() - 1;
+        minimumVelocity = configuration.getScaledMinimumFlingVelocity();
+        maximumVelocity = configuration.getScaledMaximumFlingVelocity();
     }
 
     private void requestParentDisallowInterceptTouchEvent() {
@@ -52,6 +60,24 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
         switch (MotionEventCompat.getActionMasked(ev)) {
+            case MotionEvent.ACTION_DOWN: {
+                originatedHere = ViewTouchHelper.isTopMostView(this, ev);
+
+                if (originatedHere) {
+                    activePointerId = ev.getPointerId(0);
+                    lastMotionX = (int) ev.getX();
+                    lastMotionY = (int) ev.getY();
+
+                    initOrResetVelocityTracker();
+                    velocityTracker.addMovement(ev);
+
+                    requestParentDisallowInterceptTouchEvent();
+
+                } else {
+                    stopNestedScroll();
+                }
+            }
+
             case MotionEvent.ACTION_MOVE: {
                 if (hasNestedScrollingParent()) {
                     return true;
@@ -64,25 +90,17 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
                     break;
                 }
 
-                lastMotionX = (int) ev.getX(pointerIndex);
-                lastMotionY = (int) ev.getY(pointerIndex);
+                int x = (int) ev.getX(pointerIndex);
+                int y = (int) ev.getY(pointerIndex);
+                if (originatedHere && Math.abs(x - lastMotionX) > touchSlop || Math.abs(y - lastMotionY) > touchSlop) {
+                    lastMotionX = x;
+                    lastMotionY = y;
 
-                initVelocityTrackerIfNotExists();
-                velocityTracker.addMovement(ev);
+                    initVelocityTrackerIfNotExists();
+                    velocityTracker.addMovement(ev);
 
-                requestParentDisallowInterceptTouchEvent();
-                break;
-            }
-
-            case MotionEvent.ACTION_DOWN: {
-                activePointerId = ev.getPointerId(0);
-                lastMotionX = (int) ev.getX();
-                lastMotionY = (int) ev.getY();
-
-                initOrResetVelocityTracker();
-                velocityTracker.addMovement(ev);
-
-                requestParentDisallowInterceptTouchEvent();
+                    requestParentDisallowInterceptTouchEvent();
+                }
                 break;
             }
 
@@ -95,7 +113,7 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
                 onSecondaryPointerUp(ev);
                 break;
         }
-        return true;
+        return originatedHere;
     }
 
     @Override
@@ -134,14 +152,15 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
 
             case MotionEvent.ACTION_UP:
                 if (hasNestedScrollingParent()) {
-                    ViewConfiguration configuration = ViewConfiguration.get(getContext());
-                    velocityTracker.computeCurrentVelocity(1000, configuration.getScaledMaximumFlingVelocity());
-                    float velocityX = -velocityTracker.getXVelocity();
-                    float velocityY = -velocityTracker.getYVelocity();
+                    velocityTracker.computeCurrentVelocity(1000, maximumVelocity);
+                    float velocityX = -velocityTracker.getXVelocity(activePointerId);
+                    float velocityY = -velocityTracker.getYVelocity(activePointerId);
                     recycleVelocityTracker();
 
-                    if (!dispatchNestedPreFling(velocityX, velocityY)) {
-                        dispatchNestedFling(velocityX, velocityY, false);
+                    if (Math.abs(velocityX) > minimumVelocity || Math.abs(velocityY) > minimumVelocity) {
+                        if (!dispatchNestedPreFling(velocityX, velocityY)) {
+                            dispatchNestedFling(velocityX, velocityY, false);
+                        }
                     }
                 }
 
@@ -228,6 +247,7 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
     @Override
     public void stopNestedScroll() {
         helper.stopNestedScroll();
+        originatedHere = false;
         activePointerId = INVALID_POINTER;
         recycleVelocityTracker();
     }
@@ -291,3 +311,34 @@ public class NestedScrollMapView extends FrameLayout implements OnMapReadyCallba
 
 }
 
+class ViewTouchHelper {
+
+    public static boolean isTopMostView(View target, MotionEvent ev) {
+        View root = target.getRootView();
+        return isTopMostView(target, root, (int) ev.getRawX(), (int) ev.getRawY());
+    }
+
+    private static boolean isTopMostView(View target, View current, int x, int y) {
+        if (current instanceof ViewGroup) {
+            final ViewGroup group = (ViewGroup) current;
+            final int scrollX = group.getScrollX();
+            final int scrollY = group.getScrollY();
+
+            for (int i = group.getChildCount() - 1; i >= 0; i--) {
+                final View child = group.getChildAt(i);
+                final int left = child.getLeft() - scrollX;
+                final int top = child.getTop() - scrollY;
+
+                if (child.getVisibility() == View.VISIBLE &&
+                        !(y < top || y >= child.getBottom() - scrollY
+                                || x < left || x >= child.getRight() - scrollX)) {
+                    // this is the top-most view
+                    return child == target ||
+                            isTopMostView(target, child, x - left, y - top);
+                }
+            }
+        }
+        return false;
+    }
+
+}
