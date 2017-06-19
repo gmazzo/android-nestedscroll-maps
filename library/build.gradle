@@ -53,23 +53,28 @@ install {
     }
 }
 
-task sourcesJar(type: Jar) {
-    from android.sourceSets.main.java.srcDirs
-    classifier = 'sources'
-}
+android.libraryVariants.all { variant ->
+    if (variant.name == 'release') {
+        task sourcesJar(type: Jar, dependsOn: "assemble${variant.name.capitalize()}") {
+            from android.sourceSets.main.java.srcDirs
+            classifier = 'sources'
+        }
 
-task javadoc(type: Javadoc) {
-    source = android.sourceSets.main.java.srcDirs
-    classpath += configurations.compile
-    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
-}
+        task javadoc(type: Javadoc, dependsOn: "assemble${variant.name.capitalize()}") {
+            source = files(variant.javaCompile.source)
+            classpath += files(android.getBootClasspath(), variant.javaCompile.classpath)
+            failOnError = false
+            exclude '**/R.java', '**/BuildConfig.java'
+        }
 
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
-}
+        task javadocJar(type: Jar, dependsOn: javadoc) {
+            classifier = 'javadoc'
+            from javadoc.destinationDir
+        }
 
-artifacts {
-    archives javadocJar
-    archives sourcesJar
+        artifacts {
+            archives javadocJar
+            archives sourcesJar
+        }
+    }
 }
