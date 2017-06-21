@@ -20,5 +20,6 @@ dependencies {
 
     compile "com.android.support:design:$appCompatVersion"
     compile "com.android.support:cardview-v7:$appCompatVersion"
+    compile 'com.android.support.constraint:constraint-layout:1.0.2'
     compile 'com.google.android.gms:play-services-maps:11.0.1'
 }
