@@ -57,7 +57,7 @@ public class BottomSheetFragment extends Fragment implements View.OnLayoutChange
                 image.setAlpha(2.5f * offset - 1.5f);
                 image.setTranslationY(-imageBottom * inverseOffset);
                 button.setTranslationY((peekHeight / 2 - imageBottom) * inverseOffset);
-                content.setTranslationY(-imageBottom * inverseOffset);
+                content.setTranslationY(image.getTranslationY());
             }
 
             @Override
