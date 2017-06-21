@@ -51,11 +51,13 @@ public class BottomSheetFragment extends Fragment implements View.OnLayoutChange
             @Override
             public void onSlide(@NonNull View bottomSheet, float slideOffset) {
                 float offset = Math.max(slideOffset, 0);
+                float inverseOffset = 1 - offset;
                 int imageBottom = image.getBottom();
 
                 image.setAlpha(2.5f * offset - 1.5f);
-                button.setTranslationY((peekHeight / 2 - imageBottom) * (1 - offset));
-                content.setTranslationY(-imageBottom * (1 - offset));
+                image.setTranslationY(-imageBottom * inverseOffset);
+                button.setTranslationY((peekHeight / 2 - imageBottom) * inverseOffset);
+                content.setTranslationY(-imageBottom * inverseOffset);
             }
 
             @Override
